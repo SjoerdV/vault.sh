@@ -30,10 +30,10 @@ usage()
 cat <<EOF
 
 vault simplifies encryption and decryption of files to a vault.
- 
+
 Usage: $(basename $0) [OPTIONS] filename(s)
 
-  -d       Decrypts the file to the vault and optionally makes 
+  -d       Decrypts the file to the vault and optionally makes
            an index to re-encrypt it and copy it back to its
 	   original location.
   -e       Re-encrypt indexed files in the vault and copy them
@@ -143,12 +143,17 @@ decrypt()
 		return 0
 	fi
 
+	# Save the SHA-1 hash of the orginal file and decrypt to vault
+	# We are using gpg to calculate for better portability
+	HASH=$($GPG --print-md --with-colons sha1 "${FILE}")
+  IFS=':' read -r -a array <<< "${HASH}"
+  SHORTHASH=${array[2]}
 	# File path to decrypt to vault
-	OUT="${VAULT}/$(basename "${FILE}" .gpg)"
+	OUT="${VAULT}/$(basename "${FILE}" .gpg).${SHORTHASH}"
 	# Index file
 	INDEX="$(dirname "${OUT}")/.$(basename "${OUT}").vaultindex"
 
-	# Check if $OUT exists	
+	# Check if $OUT exists
 	if [[ -f "${OUT}" ]]; then
 		if [[ ! -f "${INDEX}" ]]; then
 			echo "There is already a file named '$(basename "${OUT}")' in the vault."
@@ -159,14 +164,12 @@ decrypt()
 			read -p "Do you want to overwrite it? (Y/n) " yn
 			case $yn in
 			[Nn]* ) return 0;;
-			* ) break;; 
+			* ) break;;
 			esac
 		done
 	fi
-	
-	# Save the SHA-1 hash of the orginal file and decrypt to vault	
-	# We are using gpg to calculate for better portability
-	HASH=$($GPG --print-md --with-colons sha1 "${FILE}")
+
+  # Save the file
 	$GPG --decrypt "${FILE}" > "${OUT}"
 	echo "The file was decrypted to the vault: $OUT"
 	# If there's an index delete it.
@@ -184,7 +187,7 @@ decrypt()
 		case $yn in
 		[1] ) rm $OUT; return 0;;
 		[3] ) return 0;;
-		* ) break ;; 
+		* ) break ;;
 		esac
 	done
 	# Make an index file in vault
@@ -223,7 +226,7 @@ encrypt(){
 			echo -e "\tError parsing ${index}"
 			break
 		fi
-		
+
 		if [[ -f "${ORIG_FILE}" ]]; then
 			ORIG_HASH=$($GPG --print-md --with-colons sha1 "${ORIG_FILE}")
 		else
@@ -236,7 +239,7 @@ encrypt(){
 		if [[ -f "${ORIG_FILE}" && "${HASH}" != "${ORIG_HASH}" ]]; then
 			echo -e "\t## The original file has been modified after decryption! ##"
 		fi
-		
+
 		if [[ -f "${ORIG_FILE}" ]]; then
 			while $QUIET; do
 			echo -e "\tDo you want to overwrite ${ORIG_FILE}?(Y/n) "
@@ -244,18 +247,18 @@ encrypt(){
 				case $yn in
 				[yY]* ) break ;;
 				[Nn]* ) break 2;;
-				* ) break ;; 
+				* ) break ;;
 				esac
 			done
 		fi
-		$GPG --encrypt $RECIPIENT --batch --yes --output "${ORIG_FILE}" "${DEC_FILE}" 
+		$GPG --encrypt $RECIPIENT --batch --yes --output "${ORIG_FILE}" "${DEC_FILE}"
 		while $QUIET; do
 		echo -e "\tDo you want to delete the unencrypted file ${DEC_FILE} and its index?(Y/n) "
 			read -p "" yn
 			case $yn in
 			[yY]* ) break ;;
 			[Nn]* ) break 2;;
-			* ) break ;; 
+			* ) break ;;
 			esac
 		done
 		rm "${DEC_FILE}"
