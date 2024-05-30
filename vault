@@ -33,19 +33,19 @@ vault simplifies encryption and decryption of files to a vault.
 
 Usage: $(basename $0) [OPTIONS] filename(s)
 
-  -d       Decrypts the file to the vault and optionally makes
-           an index to re-encrypt it and copy it back to its
-	   original location.
-  -e       Re-encrypt indexed files in the vault and copy them
-           to their original location.
-  -p       Path of the vault. Deafults to \$VAULT if set, other-
-           wise \$HOME/vault
-  -k       GPG key to use to encrypt the files. If not provided
-           uses \$VAULT_KEY (if set) or the gpg option
-	   --default-recipient-self.
-  -q       Run non-interactively (automatically overwrites)
-  -v	   Print the version
-  -h       Print this help message
+	-d       Decrypts the file to the vault and optionally makes
+					 an index to re-encrypt it and copy it back to its
+		 original location.
+	-e       Re-encrypt indexed files in the vault and copy them
+					 to their original location.
+	-p       Path of the vault. Deafults to \$VAULT if set, other-
+					 wise \$HOME/vault
+	-k       GPG key to use to encrypt the files. If not provided
+					 uses \$VAULT_KEY (if set) or the gpg option
+		 --default-recipient-self.
+	-q       Run non-interactively (automatically overwrites)
+	-v	   Print the version
+	-h       Print this help message
 
 EOF
 }
@@ -56,17 +56,17 @@ QUIET=""
 OPTIND=1
 
 while getopts "hqedk:p:v" opt; do
-    case "$opt" in
-        h)
-                usage
+		case "$opt" in
+				h)
+								usage
 		exit 0
-                ;;
+								;;
 	e)
 		ENCRYPT=1
 		;;
 	d)
-                DECRYPT=1
-                ;;
+								DECRYPT=1
+								;;
 	k)
 		VAULT_KEY=$OPTARG
 		;;
@@ -80,10 +80,10 @@ while getopts "hqedk:p:v" opt; do
 		exit 0
 		;;
 	*)
-      		echo "Invalid option: -$OPTARG" >&2
-      		exit 1
-      		;;
-    esac
+					echo "Invalid option: -$OPTARG" >&2
+					exit 1
+					;;
+		esac
 done
 
 shift $((OPTIND-1))
@@ -146,8 +146,8 @@ decrypt()
 	# Save the SHA-1 hash of the orginal file and decrypt to vault
 	# We are using gpg to calculate for better portability
 	HASH=$($GPG --print-md --with-colons sha1 "${FILE}")
-  IFS=':' read -r -a array <<< "${HASH}"
-  SHORTHASH=${array[2]}
+	IFS=':' read -r -a array <<< "${HASH}"
+	SHORTHASH=${array[2]}
 	# File path to decrypt to vault
 	OUT="${VAULT}/$(basename "${FILE}" .gpg).${SHORTHASH}"
 	# Index file
@@ -169,7 +169,7 @@ decrypt()
 		done
 	fi
 
-  # Save the file
+	# Save the file
 	$GPG --decrypt "${FILE}" > "${OUT}"
 	echo "The file was decrypted to the vault: $OUT"
 	# If there's an index delete it.
