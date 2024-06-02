@@ -30,10 +30,10 @@ usage()
 cat <<EOF
 
 vault simplifies encryption and decryption of files to a vault.
-
+ 
 Usage: $(basename $0) [OPTIONS] filename(s)
 
-  -d       Decrypts the file to the vault and optionally makes
+  -d       Decrypts the file to the vault and optionally makes 
            an index to re-encrypt it and copy it back to its
 	   original location.
   -e       Re-encrypt indexed files in the vault and copy them
@@ -126,6 +126,9 @@ if [[ $ENCRYPT -eq 0 && $DECRYPT -eq 0 ]]; then
 	DECRYPT=1
 fi
 
+# Fetch currently supported algorithms from GPG
+SUPPORTED_ALGOS=$($GPG --help | grep '^Pubkey' | sed -E 's/^Pubkey: //g' | sed -E 's/,\s/\|/g')
+
 decrypt()
 {
 	FILE="$1"
@@ -138,10 +141,12 @@ decrypt()
 	FILE="$(cd "$(dirname "${FILE}")"; pwd)/$(basename "${FILE}")"
 
 	# Check that the file to decrypt is PGP
-	if ! ((file "${FILE}" | grep -E "PGP|GPG|data")>/dev/null); then
-		echo "${FILE}" is not in PGP format.
+	IS_GPG_FILE="$($GPG --list-packets "${FILE}" 2>&1 1>/dev/null || /bin/true)"
+	if ! (echo "$IS_GPG_FILE" | grep -E "$SUPPORTED_ALGOS")>/dev/null; then
+		echo "${FILE}" is *NOT* in PGP format. Exiting...
 		return 0
 	fi
+	echo "${FILE}" is in PGP format. Continuing...
 
 	# Save the SHA-1 hash of the orginal file and decrypt to vault
 	# We are using gpg to calculate for better portability
@@ -152,7 +157,7 @@ decrypt()
 	# Index file
 	INDEX="$(dirname "${OUT}")/.$(basename "${OUT}").vaultindex"
 
-	# Check if $OUT exists
+	# Check if $OUT exists	
 	if [[ -f "${OUT}" ]]; then
 		if [[ ! -f "${INDEX}" ]]; then
 			echo "There is already a file named '$(basename "${OUT}")' in the vault."
@@ -163,11 +168,11 @@ decrypt()
 			read -p "Do you want to overwrite it? (Y/n) " yn
 			case $yn in
 			[Nn]* ) return 0;;
-			* ) break;;
+			* ) break;; 
 			esac
 		done
 	fi
-
+	
 	# Save the file
 	$GPG --decrypt "${FILE}" > "${OUT}"
 	echo "The file was decrypted to the vault: $OUT"
@@ -186,7 +191,7 @@ decrypt()
 		case $yn in
 		[1] ) rm $OUT; return 0;;
 		[3] ) return 0;;
-		* ) break ;;
+		* ) break ;; 
 		esac
 	done
 	# Make an index file in vault
@@ -225,7 +230,7 @@ encrypt(){
 			echo -e "\tError parsing ${index}"
 			break
 		fi
-
+		
 		if [[ -f "${ORIG_FILE}" ]]; then
 			ORIG_HASH=$($GPG --print-md --with-colons sha1 "${ORIG_FILE}")
 		else
@@ -238,7 +243,7 @@ encrypt(){
 		if [[ -f "${ORIG_FILE}" && "${HASH}" != "${ORIG_HASH}" ]]; then
 			echo -e "\t## The original file has been modified after decryption! ##"
 		fi
-
+		
 		if [[ -f "${ORIG_FILE}" ]]; then
 			while $QUIET; do
 			echo -e "\tDo you want to overwrite ${ORIG_FILE}?(Y/n) "
@@ -246,18 +251,18 @@ encrypt(){
 				case $yn in
 				[yY]* ) break ;;
 				[Nn]* ) break 2;;
-				* ) break ;;
+				* ) break ;; 
 				esac
 			done
 		fi
-		$GPG --encrypt $RECIPIENT --batch --yes --output "${ORIG_FILE}" "${DEC_FILE}"
+		$GPG --encrypt $RECIPIENT --batch --yes --output "${ORIG_FILE}" "${DEC_FILE}" 
 		while $QUIET; do
 		echo -e "\tDo you want to delete the unencrypted file ${DEC_FILE} and its index?(Y/n) "
 			read -p "" yn
 			case $yn in
 			[yY]* ) break ;;
 			[Nn]* ) break 2;;
-			* ) break ;;
+			* ) break ;; 
 			esac
 		done
 		rm "${DEC_FILE}"
