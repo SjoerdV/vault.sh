@@ -126,6 +126,9 @@ if [[ $ENCRYPT -eq 0 && $DECRYPT -eq 0 ]]; then
 	DECRYPT=1
 fi
 
+# Fetch currently supported algorithms from GPG
+SUPPORTED_ALGOS=$($GPG --help | grep '^Pubkey' | sed -E 's/^Pubkey: //g' | sed -E 's/,\s/\|/g')
+
 decrypt()
 {
 	FILE="$1"
@@ -138,13 +141,19 @@ decrypt()
 	FILE="$(cd "$(dirname "${FILE}")"; pwd)/$(basename "${FILE}")"
 
 	# Check that the file to decrypt is PGP
-	if ! ((file "${FILE}" | grep -E "PGP|GPG")>/dev/null); then
-		echo "${FILE}" is not in PGP format.
+	IS_GPG_FILE="$($GPG --list-packets "${FILE}" 2>&1 1>/dev/null || /bin/true)"
+	if ! (echo "$IS_GPG_FILE" | grep -E "$SUPPORTED_ALGOS")>/dev/null; then
+		echo "${FILE}" is *NOT* in PGP format. Exiting...
 		return 0
 	fi
+	echo "${FILE}" is in PGP format. Continuing...
 
+	# Save the SHA-1 hash of the orginal file and decrypt to vault
+	# We are using gpg to calculate for better portability
+	HASH=$($GPG --print-md --with-colons sha1 "${FILE}")
+	SHORTHASH=$(cut -d ':' -f3 <<< "${HASH}")
 	# File path to decrypt to vault
-	OUT="${VAULT}/$(basename "${FILE}" .gpg)"
+	OUT="${VAULT}/$(basename "${FILE}" .gpg).${SHORTHASH}"
 	# Index file
 	INDEX="$(dirname "${OUT}")/.$(basename "${OUT}").vaultindex"
 
@@ -164,9 +173,7 @@ decrypt()
 		done
 	fi
 	
-	# Save the SHA-1 hash of the orginal file and decrypt to vault	
-	# We are using gpg to calculate for better portability
-	HASH=$($GPG --print-md --with-colons sha1 "${FILE}")
+	# Save the file
 	$GPG --decrypt "${FILE}" > "${OUT}"
 	echo "The file was decrypted to the vault: $OUT"
 	# If there's an index delete it.
